@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="vi">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description"
+        content="Hệ thống UAV nhận diện và phân loại phương tiện giao thông: ứng dụng vào giám sát giao thông đô thị. Đề tài PBL5 với PX4, Gazebo, ROS 2 và YOLOv8m.">
+    <title>HỆ THỐNG UAV NHẬN DIỆN VÀ PHÂN LOẠI PHƯƠNG TIỆN GIAO THÔNG: ỨNG DỤNG VÀO GIÁM SÁT GIAO THÔNG ĐÔ THỊ</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <aside class="sidebar"><a class="brand" href="#monitor"><span class="brand-mark">✣</span><span>UAV<span
+                    class="brand-light">Traffic</span><small>GIÁM SÁT GIAO THÔNG</small></span></a>
+        <div class="nav-label">KHÔNG GIAN LÀM VIỆC</div>
+        <nav><button data-view="monitor" class="active"><span>◫</span> Giám sát trực tiếp <i></i></button><button
+                data-view="results"><span>▥</span> Kết quả mô hình</button><button data-view="project"><span>⌘</span>
+                Giới thiệu dự án</button></nav>
+        <div class="sidebar-bottom">
+            <div class="project-tag"><span class="tiny-drone">✣</span>
+                <div>Dự án PBL 5<small>UAV · Computer Vision</small></div><span class="version">v1.0</span>
+            </div>
+            <p>Đại học Bách khoa<br>Đại học Đà Nẵng<br>Khoa Điện tử - Trí tuệ nhân tạo</p>
+            <div class="sidebar-footer"><span class="dot"></span> Môi trường mô phỏng <span>↗</span></div>
+        </div>
+    </aside>
+    <div class="workspace">
+        <header>
+            <div class="breadcrumb">Không gian làm việc <span>/</span> <strong id="crumb">Giám sát trực tiếp</strong>
+            </div>
+            <div class="header-right"><span class="clock" id="clock"></span><span class="avatar">P5</span></div>
+        </header>
+        <main>
+            <section id="monitor" class="view active">
+                <div class="page-heading">
+                    <div>
+                        <div class="eyebrow">TRUNG TÂM ĐIỀU HÀNH</div>
+                        <h1>Giám sát giao thông</h1>
+                        <p>Theo dõi ảnh camera UAV và kết quả nhận diện phương tiện giao thông.</p>
+                    </div><button class="button white" id="export">↓ <span>Xuất dữ liệu CSV</span></button>
+                </div>
+                <div class="notice" id="monitor-notice"><span class="notice-icon">◉</span>
+                    <div><strong id="mode-title">Chế độ trình diễn</strong><span id="mode-description"> Cảnh chuyển động
+                            và số liệu bên dưới là dữ liệu demo. Chọn Kết nối ROS 2 để nhận ảnh và kết quả YOLO từ máy
+                            xử lý.</span></div><button id="connection">Kết nối ROS 2 ↗</button>
+                </div>
+                <details class="layout-options" open>
+                    <summary>Tùy chỉnh hiển thị</summary>
+                    <div class="layout-tools">
+                        <div id="panel-toggles"></div><button class="button white" id="focus-camera">Tập trung
+                            camera</button><button class="button white" id="show-panels">Hiện tất cả</button>
+                    </div>
+                </details>
+                <div class="metrics" id="metrics-panel">
+                    <article class="metric"><span>Đối tượng đang hiển thị <b>⌖</b></span>
+                        <div><strong id="total">16</strong><small>đối tượng</small></div>
+                        <footer><span class="green-dot"></span> Trong khung hình demo</footer>
+                    </article>
+                    <article class="metric"><span>Lớp nhận diện <b>▦</b></span>
+                        <div><strong>05</strong><small>nhóm đối tượng</small></div>
+                        <footer>Người · Ô tô · Xe máy · Xe buýt · Xe tải</footer>
+                    </article>
+                    <article class="metric"><span>mAP50 sau fine-tune <b>↗</b></span>
+                        <div><strong>97,1<span>%</span></strong><small class="pill">+56,9 điểm %</small></div>
+                        <footer>Kết quả báo cáo · 300 ảnh mô phỏng</footer>
+                    </article>
+                    <article class="metric"><span>Độ cao quan sát <b>⌁</b></span>
+                        <div><strong id="altitude-metric">15,0</strong><small>mét</small></div>
+                        <footer id="altitude-footer">Thông số demo · Góc camera 52°</footer>
+                    </article>
+                </div>
+                <div class="monitor-grid">
+                    <article class="panel camera-panel">
+                        <div class="panel-heading">
+                            <h2><span class="green-dot"></span> Camera UAV <span class="muted-label">CAM 01</span></h2>
+                            <span class="badge" id="camera-badge">MÔ PHỎNG</span>
+                        </div>
+                        <div class="camera-stage" id="stage"><canvas id="scene" width="1200" height="680"
+                                aria-label="Cảnh giao thông minh họa từ trên cao có khung nhận diện"></canvas><video
+                                id="video" controls hidden></video><img id="localImage" hidden
+                                alt="Ảnh tải lên để xem trước">
+                            <div class="camera-top"><span>✣ X500 · SONOMA <b id="altitude-hud">15 m</b></span><span
+                                    id="scene-status">● DEMO</span></div>
+                            <div class="reticle"></div>
+                            <div class="camera-bottom"><span id="source-label">GAZEBO INSPIRED / CẢNH MINH
+                                    HỌA</span><span id="elapsed">00:00</span></div>
+                            <div id="upload-note" hidden>Chỉ xem trước tệp · chưa chạy nhận diện</div>
+                        </div>
+                        <div class="altitude-control">
+                            <div class="altitude-heading"><label for="altitude" id="altitude-label">Độ cao camera mô
+                                    phỏng</label><output id="altitude-value" for="altitude">15 m</output></div><input
+                                type="range" id="altitude" min="4" max="35" step="1" value="15"
+                                aria-describedby="altitude-hint">
+                            <div class="altitude-scale"><span>4 m · Góc nhìn gần</span><span>35 m · Góc nhìn rộng</span>
+                            </div><button class="button dark" id="send-altitude" hidden>Gửi độ cao mục tiêu</button>
+                            <p id="altitude-hint">Kéo để thay đổi tầm nhìn camera demo. Không điều khiển UAV thật.</p>
+                        </div>
+                        <div class="camera-toolbar">
+                            <div><button id="pause" class="button dark">Ⅱ Tạm dừng</button><button id="boxes"
+                                    class="icon-button" title="Bật hoặc tắt khung nhận diện"
+                                    aria-label="Bật hoặc tắt khung nhận diện" aria-pressed="true">⌗</button><button
+                                    id="snapshot" class="icon-button" title="Chụp ảnh demo"
+                                    aria-label="Chụp ảnh demo">▣</button></div>
+                            <div><button class="text-button" id="upload">↥ Tải ảnh / video</button><input type="file"
+                                    id="file" accept="image/*,video/*" hidden><button class="text-button" id="reset"
+                                    hidden>Về demo</button><button id="fullscreen" class="icon-button"
+                                    aria-label="Toàn màn hình">⛶</button></div>
+                        </div>
+                    </article>
+                    <article class="panel detections">
+                        <div class="panel-heading">
+                            <h2>Đối tượng nhận diện</h2><span class="count" id="list-count">16</span>
+                        </div>
+                        <div class="filter-bar"><span>LỌC THEO LỚP</span><button id="all-filter">Chọn tất cả</button>
+                        </div>
+                        <div class="class-filters" id="filters"></div>
+                        <div class="threshold"><label for="confidence">Ngưỡng tin cậy <strong
+                                    id="conf-value">50%</strong></label><input id="confidence" type="range" min="0"
+                                max="100" value="50">
+                            <div><span>0%</span><span>100%</span></div>
+                        </div>
+                        <div class="list-header"><span id="list-header-label">ĐỐI TƯỢNG / ID DEMO</span><span>TIN
+                                CẬY</span></div>
+                        <div id="detection-list"></div>
+                        <div class="list-foot" id="tracking-note">Các ID chỉ minh họa, chưa phải kết quả tracking.</div>
+                    </article>
+                </div>
+                <article class="panel flight-panel" id="flight-panel">
+                    <div class="panel-heading">
+                        <h2>⠿ Điều khiển</h2><span class="badge" id="flight-badge">DEMO</span><button
+                            id="collapse-flight" class="panel-hide" aria-label="Thu gọn bảng điều khiển"
+                            aria-expanded="true">−</button>
+                    </div>
+                    <div class="flight-body" id="flight-buttons">
+                        <div class="direction-pad"><button data-flight="forward"
+                                class="flight-key forward">↑<small>Tiến</small></button><button data-flight="left"
+                                class="flight-key left">←<small>Trái</small></button><button data-flight="hold"
+                                class="flight-key hold">⊙<small>Giữ vị trí</small></button><button data-flight="right"
+                                class="flight-key right">→<small>Phải</small></button><button data-flight="backward"
+                                class="flight-key backward">↓<small>Lùi</small></button></div>
+                        <div class="flight-extra"><button data-flight="up" class="flight-key">＋<small>Lên 1
+                                    m</small></button><button data-flight="down" class="flight-key">−<small>Xuống 1
+                                    m</small></button><button data-flight="yaw_left" class="flight-key">↶<small>Xoay
+                                    trái</small></button><button data-flight="yaw_right" class="flight-key">↷<small>Xoay
+                                    phải</small></button></div>
+                    </div>
+                    <div class="flight-footer"><span id="flight-status" role="status" aria-live="polite"></span><button
+                            id="reset-camera" class="dock-icon" title="Đặt lại góc nhìn demo"
+                            aria-label="Đặt lại góc nhìn demo">↺</button><button id="dock-flight" class="dock-icon"
+                            title="Đưa bảng về góc màn hình" aria-label="Đưa bảng về góc màn hình">↙</button></div>
+                </article>
+                <div class="lower-grid">
+                    <article class="panel distribution">
+                        <div class="panel-heading">
+                            <h2>Phân bố trong khung hình</h2><span class="muted-label" id="distribution-tag">DEMO</span>
+                        </div>
+                        <div class="distribution-body">
+                            <div class="donut" id="donut">
+                                <div><strong id="donut-total">16</strong><span>đối tượng</span></div>
+                            </div>
+                            <div id="legend"></div>
+                        </div>
+                    </article>
+                    <article class="panel session">
+                        <div class="panel-heading">
+                            <h2>Thông tin phiên quan sát</h2><span class="badge neutral" id="session-badge">MINH
+                                HỌA</span>
+                        </div>
+                        <div class="session-grid">
+                            <div><span>Phương tiện bay</span><strong>X500 · PX4 SITL</strong></div>
+                            <div><span>Nguồn hình ảnh dự kiến</span><strong id="session-source">Gazebo → ROS 2
+                                    /camera</strong></div>
+                            <div><span>Mô hình dự kiến</span><strong id="session-model">YOLOv8m · best.pt</strong></div>
+                            <div><span>Trạng thái kết nối</span><strong class="amber" id="session-connection">Chưa kết
+                                    nối backend</strong></div>
+                        </div>
+                        <div class="session-note">Đếm lưu lượng & ước lượng tốc độ <span>Giai đoạn tiếp theo</span>
+                        </div>
+                    </article>
+                </div>
+            </section>
+            <section id="results" class="view">
+                <div class="page-heading">
+                    <div>
+                        <div class="eyebrow">ĐÁNH GIÁ THỰC NGHIỆM</div>
+                        <h1>Kết quả mô hình</h1>
+                        <p>Số liệu từ báo cáo giữa kỳ · YOLOv8m trước và sau fine-tune.</p>
+                    </div><span class="badge">DỮ LIỆU BÁO CÁO</span>
+                </div>
+                <div class="notice"><span>ⓘ</span>
+                    <div>Kết quả trên dữ liệu mô phỏng cùng miền. mAP50 không phải tỷ lệ nhận đúng và chưa đại diện cho
+                        ảnh UAV thực tế.</div>
+                </div>
+                <div class="metrics result-metrics">
+                    <article class="metric"><span>mAP50</span>
+                        <div><strong>0,971</strong></div>
+                        <footer>Mô hình gốc: 0,402</footer>
+                    </article>
+                    <article class="metric"><span>mAP50–95</span>
+                        <div><strong>0,826</strong></div>
+                        <footer>Mô hình gốc: 0,323</footer>
+                    </article>
+                    <article class="metric"><span>Precision trung bình</span>
+                        <div><strong>0,984</strong></div>
+                        <footer>Mô hình gốc: 0,482</footer>
+                    </article>
+                    <article class="metric"><span>Recall trung bình</span>
+                        <div><strong>0,929</strong></div>
+                        <footer>Mô hình gốc: 0,535</footer>
+                    </article>
+                </div>
+                <article class="panel">
+                    <div class="panel-heading">
+                        <h2>Hiệu quả theo từng lớp</h2><span class="muted-label">TẬP KIỂM TRA · 300 ẢNH</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Lớp đối tượng</th>
+                                    <th>mAP50 gốc</th>
+                                    <th>mAP50 sau fine-tune</th>
+                                    <th>Precision</th>
+                                    <th>Recall</th>
+                                    <th>mAP50–95</th>
+                                </tr>
+                            </thead>
+                            <tbody id="results-body"></tbody>
+                        </table>
+                    </div>
+                </article>
+                <div class="two-col">
+                    <article class="panel figure">
+                        <h2>Quá trình huấn luyện</h2>
+                        <p>30 epoch · fine-tune toàn bộ mạng</p><img src="assets/report-6.png"
+                            alt="Đường mất mát và mAP qua 30 epoch trích từ báo cáo">
+                    </article>
+                    <article class="panel figure">
+                        <h2>Ma trận nhầm lẫn</h2>
+                        <p>Chuẩn hóa theo nhãn thật · confidence 0,25</p><img src="assets/report-9.png"
+                            alt="Ma trận nhầm lẫn của mô hình từ báo cáo">
+                    </article>
+                </div>
+                <article class="panel dataset">
+                    <div class="panel-heading">
+                        <h2>Bộ dữ liệu mô phỏng</h2><span class="muted-label">2.800 ẢNH TỔNG CỘNG</span>
+                    </div>
+                    <div class="data-split">
+                        <div><strong>2.123</strong><span>Ảnh huấn luyện</span></div>
+                        <div><strong>377</strong><span>Ảnh kiểm định</span></div>
+                        <div><strong>300</strong><span>Ảnh kiểm tra</span></div>
+                        <div><strong>1.017</strong><span>Khung nhãn kiểm tra</span></div>
+                    </div>
+                </article>
+            </section>
+            <section id="project" class="view">
+                <div class="page-heading">
+                    <div>
+                        <div class="eyebrow">PBL 5 · TỔNG QUAN ĐỀ TÀI</div>
+                        <h1>HỆ THỐNG UAV NHẬN DIỆN VÀ PHÂN LOẠI PHƯƠNG TIỆN GIAO THÔNG: ỨNG DỤNG VÀO GIÁM SÁT GIAO THÔNG
+                            ĐÔ THỊ</h1>
+                    </div><span class="badge">BÁO CÁO GIỮA KỲ</span>
+                </div>
+                <div class="two-col">
+                    <article class="panel prose">
+                        <h2>01 / Mục tiêu & phạm vi</h2>
+                        <p>Xây dựng hệ thống UAV nhận diện và phân loại phương tiện từ ảnh camera, phục vụ giám sát giao
+                            thông đô thị. Các lớp nhận diện gồm người, ô tô, xe máy, xe buýt và xe tải. Giai đoạn giữa
+                            kỳ tập trung vào mô phỏng và tích hợp mô hình.</p>
+                        <p>Camera gimbal hai trục trên drone X500. Đoạn đường mô phỏng dài khoảng 215 m với phương tiện
+                            di chuyển hai chiều.</p>
+                        <h3>Nhóm thực hiện</h3>
+                        <p>Nguyễn Công Uy Thuật · Nguyễn Thái Hoàng<br>GVHD: TS. Nguyễn Văn Hiếu<br>Đại học Bách khoa —
+                            Đại học Đà Nẵng<br>Khoa Điện tử - Viễn thông</p>
+                    </article>
+                    <article class="panel prose">
+                        <h2>02 / Quy trình hệ thống</h2>
+                        <ol class="pipeline">
+                            <li><b>Gazebo + PX4 SITL</b><span>Mô phỏng môi trường, UAV và camera</span></li>
+                            <li><b>ros_gz_bridge → ROS 2 /camera</b><span>Chuyển ảnh camera đến nút xử lý</span></li>
+                            <li><b>YOLOv8m fine-tune</b><span>Dự đoán khung, lớp và độ tin cậy</span></li>
+                            <li><b>Giao diện web</b><span>Nhận ảnh và kết quả từ backend trong gói kết nối; có chế độ
+                                    demo độc lập</span></li>
+                        </ol>
+                    </article>
+                </div>
+                <article class="panel figure">
+                    <h2>03 / Hình ảnh thực nghiệm trong báo cáo</h2>
+                    <p>Ảnh trích từ chuyến bay mô phỏng; đây là kết quả đã ghi lại, không phải luồng trực tiếp.</p><img
+                        class="flight-image" src="assets/report-11.png"
+                        alt="Bốn khung hình nhận diện phương tiện trong chuyến bay mô phỏng">
+                </article>
+                <div class="two-col">
+                    <article class="panel prose">
+                        <h2>04 / Những phần đã hoàn thành</h2>
+                        <ul>
+                            <li>Môi trường PX4, Gazebo và ROS 2</li>
+                            <li>Quy trình thu ảnh và gán nhãn tự động</li>
+                            <li>Fine-tune YOLOv8m trên năm lớp quan tâm</li>
+                            <li>Nhận diện trên camera trong chuyến bay mô phỏng</li>
+                        </ul>
+                    </article>
+                    <article class="panel prose">
+                        <h2>05 / Hướng phát triển</h2>
+                        <ul>
+                            <li>Kiểm chứng bằng ảnh và video UAV thực tế</li>
+                            <li>Đa dạng bối cảnh, ánh sáng, mẫu xe và người</li>
+                            <li>Bổ sung tracking và đếm xe qua vạch</li>
+                            <li>Đo độ trễ toàn hệ thống và tối ưu triển khai</li>
+                        </ul>
+                    </article>
+                </div>
+            </section>
+            <footer class="main-footer"><span>UAV Traffic <b>/</b> PBL 5</span><span>Thiết kế dựa trên báo cáo giữa kỳ ·
+                    2026</span></footer>
+        </main>
+    </div>
+    <dialog id="connect-dialog">
+        <form method="dialog"><button class="close" aria-label="Đóng">×</button></form><span class="eyebrow">ROS 2 ·
+            YOLO · WEBSOCKET</span>
+        <h2>Kết nối máy xử lý UAV</h2>
+        <p>Chạy backend trên máy đang nhận topic camera. Nhập địa chỉ WebSocket và khóa truy cập của backend bên dưới.
+        </p>
+        <form id="connection-form"><label for="bridge-url">Địa chỉ backend</label><input id="bridge-url" type="url"
+                placeholder="wss://dia-chi-backend-cua-ban" autocomplete="url" required><label for="bridge-token">Khóa
+                truy cập (UAV_BRIDGE_TOKEN)</label><input id="bridge-token" type="password"
+                placeholder="Nhập khóa đã cấu hình trên máy xử lý" autocomplete="off" minlength="16" required>
+            <div class="connection-actions"><button type="submit" class="button dark" id="connect-submit">Kết
+                    nối</button><button type="button" class="button white" id="disconnect" disabled>Ngắt kết
+                    nối</button></div>
+        </form>
+        <p id="connection-message" role="status">Chưa kết nối backend.</p>
+        <div class="dialog-note">Trang HTTPS cần địa chỉ <b>wss://</b> có chứng chỉ hợp lệ. Nếu chạy trên cùng máy, dùng
+            bản web local trong gói tải về và địa chỉ <b>ws://127.0.0.1:8765</b>. Khóa chỉ giữ trong phiên này, không
+            được lưu vào trình duyệt.</div>
+        <div class="connect-download"><a class="button white" href="downloads/HUONG_DAN_KET_NOI.md" download>↓ Tải hướng
+                dẫn cài đặt</a><a href="downloads/HUONG_DAN_KET_NOI.md" target="_blank" rel="noopener">Đọc hướng dẫn
+                ↗</a></div>
+        <details>
+            <summary>Ảnh và lệnh độ cao đi qua đâu?</summary>
+            <p>ROS 2 /camera → backend YOLO → ảnh JPEG và khung nhận diện đồng bộ → web. Nguồn ROS có thể là Gazebo hoặc
+                camera thật do bạn cấu hình.</p>
+            <p>Nếu cấu hình MAVSDK, web hiển thị độ cao đo được. Gửi lệnh đổi độ cao chỉ khả dụng khi backend bật điều
+                khiển, UAV đã bay ở HOLD và có telemetry mới. Giá trị kéo là mục tiêu, không phải độ cao đã đạt.</p>
+            <p>Chưa có tracking hoặc đếm lưu lượng. Chế độ test chỉ kiểm tra đường truyền, không chạy YOLO.</p>
+        </details><button class="text-button" id="got-it">Đóng cửa sổ</button>
+    </dialog>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+    <script src="live.js"></script>
+    <script src="controls.js"></script>
+</body>
+
+</html>
